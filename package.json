@@ -1,0 +1,10 @@
+{
+  "name": "web-neopixel",
+  "version": "0.0.1",
+  "description": "Simple web API for driving neopixel strips.",
+  "author": "stephenwalters@gmail.com",
+  "dependencies": {
+    "express": "visionmedia/express",
+    "body-parser": "expressjs/body-parser"
+  }
+}

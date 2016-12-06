@@ -11,6 +11,13 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 logger.addHandler(ch)
 
+def parseError(msg, line=None):
+  if line == None and msg == None:
+    logger.exception("Parse error.")
+  else:
+    logger.exception("Parse error: %s %s", str(msg), str(line))
+  exit(-1)
+
 def parseAndRunFile(fileContentsString):
   """
   Parse a stripfile. This defines a very simple, half-assed language for
@@ -24,61 +31,74 @@ def parseAndRunFile(fileContentsString):
   """
   lines = [line.strip() for line in fileContentsString.split("\n")]
   for line in lines:
-    if line == "" or line[0] == "#":
+    if line == '' or line[0] == '#':
+      continue
+    commandAndArgs = line.split(' ')
+    command = commandAndArgs.pop(0)
+    arguments = [int(arg) for arg in commandAndArgs]
+    if command == "":
       # Blank line or comment
       continue
-    if line.startswith("SET_LEDS"):
+    if command =="SET_LEDS":
       # Execute the line. This blocks until the LED strip is show()n.
-      ledStripData = parseSetLedsCommand(line)
-      runSetLedsCommand(ledStripData)
-    elif line.startswith("DELAY"):
-      delayTimeMs = parseDelayCommand(line)
-      runDelayCommand(delayTimeMs)
+      runSetLedsCommand(arguments)
+    elif command =="SET_SINGLE_LED":
+      runSetSingleLedCommand(arguments)
+    elif command =="SET_LEDS_INDEXED":
+      runSetLedsIndexedCommand(arguments)
+    elif command =="SET_LEDS_INDEXED_BACKGROUND":
+      runSetLedsIndexedBackgroundcommand(arguments)
+    elif command =="DELAY":
+      runDelayCommand(arguments[0])
     else:
-      logger.error("Error parsing line", line)
-      exit(-1)
+      parseError("Unknown command", line)
 
-def parseSetLedsCommand(line):
-  if not line.startswith("SET_LEDS "):
-    logger.error("Error parsing line")
-    exit(-1)
-  line = line[8:]
-  pixels = []
-  for pixelString in line.split(' '):
-    if pixelString == "":
-      continue
-    pixelValue = int(pixelString)
-    if pixelValue > 16777215 or pixelValue < 0:
-      logger.error("Found non-24 bit number in SET_LEDS")
-      exit(-1)
-    pixels.append(pixelValue)
-  if len(pixels) > strip.numPixels():
-    logger.error("Got too many pixels for this strip.")
-    exit(-1)
-  return pixels
+def assertValidIndex(index):
+  if index >= 0 and index < strip.numPixels():
+    return index
+  parseError("Got invalid index", index)
+
+def assertValidColor(color):
+  if color > 16777215 or color < 0:
+    parseError("Got invalid color", color)
+  return color
+
+def runSetSingleLedCommand(pixelValue):
+  strip.setPixelColor(
+      assertValidIndex(pixelValue[0]), assertValidColor(pixelValue[1]))
+  strip.show()
+
+def runSetLedsIndexedCommand(data):
+  for index, color in zip(*[iter(data)] * 2):
+    strip.setPixelColor(assertValidIndex(index), assertValidColor(color))
+  strip.show()
+
+def runSetLedsIndexedBackgroundcommand(data):
+  backgroundColor = assertValidColor(data.pop(0))
+  nextIndex = assertValidIndex(data.pop(0))
+  nextColor = assertValidColor(data.pop(0))
+  for i in range(0, strip.numPixels()):
+    if nextIndex == i:
+      strip.setPixelColor(nextIndex, nextColor)
+      if len(data) > 1:
+	nextIndex = assertValidIndex(data.pop(0))
+	nextColor = assertValidColor(data.pop(0))
+    else:
+      strip.setPixelColor(i, backgroundColor)
+  strip.show()
 
 def runSetLedsCommand(pixels):
-  logger.debug("Setting LEDs")
   i = 0
   for pixel in pixels:
-    strip.setPixelColor(i, pixel)
+    strip.setPixelColor(i, assertValidColor(pixel))
     i += 1
+    if i > strip.numPixels():
+      parseError("SET_LEDS too many LEDS!")
   strip.show()
-  logger.debug("Done")
-
-def parseDelayCommand(line):
-  logger.debug("Delaying")
-  if not line.startswith("DELAY "):
-    logger.error("Error parsing line", line)
-    exit(-1)
-  line = line[6:]
-  delayMs = int(line)
-  if (delayMs < 0):
-    logger.error("Found negative delay in DELAY")
-    exit(-1)
-  return delayMs
 
 def runDelayCommand(delayMs):
+  if (delayMs < 0):
+    parseError("Found negative delay in DELAY")
   sleep(delayMs / 1000)
 
 def parseArgs():
