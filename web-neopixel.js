@@ -1,10 +1,12 @@
 var config = require('./config');
+
+var bodyParser = require('body-parser');
 var childProcess = require('child_process');
 var express = require('express');
 var fs = require('fs');
 
 var app = express();
-app.use(express.bodyParser());
+app.use(bodyParser.json());
 
 function WebNeopixel() {
   this.programIsRunning = false;
@@ -27,16 +29,14 @@ function WebNeopixel() {
   */
 WebNeopixel.prototype.handleSetPixels = function(req, res) {
   console.log('handleSetPixels');
-  console.log(req);
   var mode = req.body.mode;
-  console.log('mode is ' + mode)
   var program = '';
   if (mode == 'single') {
     program = 'SET_SINGLE_LED ' + req.body.pixelData;
   } else if (mode == 'all') {
     program = 'SET_LEDS ' + req.body.pixelData.join(' ');
   } else if (mode == 'indexed') {
-    if (req.params.background) {
+    if (req.body.background) {
       program = 'SET_LEDS_INDEXED_BACKGROUND ' + req.body.background + 
 	  ' ' + req.body.pixelData.join(' ');
     } else {
@@ -45,6 +45,8 @@ WebNeopixel.prototype.handleSetPixels = function(req, res) {
   } else {
     res.status(405).send({error: 'Invalid mode'});
   }
+
+  program = program + '\n';
 
   this.runProgram(program);
   res.send();
@@ -57,16 +59,31 @@ WebNeopixel.prototype.runProgram = function(program) {
   }
   var programPath = this.writeProgramToTemporaryFile(program);
   this.childProcess =
-      childProcess.exec('./tools/strip-driver.py ' + programPath);
+      childProcess.exec('python ./tools/strip-driver.py ' + programPath,
+	  (error, stdout, stderr) => {
+	    if (stdout) {
+	      console.log(`stdout: ${stdout}`);
+	    }
+	    if (stderr) {
+	      console.log(`stderr: ${stderr}`);
+	    }
+	    if (error) {
+	      console.log(`Exec error: ${error}`);
+	    } else {
+	      this.childProcess.on('error', (error) => {
+		console.log(`Error from child process: ${error}`);
+	      });
+	    }
+	  });
 };
 
 
 WebNeopixel.prototype.writeProgramToTemporaryFile = function(program) {
   if (!this.tempDirPath) {
-    this.tempDirPath = fs.mkdtempSync('strip-programs');
+    this.tempDirPath = fs.mkdtempSync('/tmp/strip-programs');
   }
   var newFilePath = this.tempDirPath +
-      'web-neopixel-' + this.tempProgramIndex + '.stripfile';
+      '/web-neopixel-' + this.tempProgramIndex + '.stripfile';
   this.tempProgramIndex += 1;
   fs.writeFileSync(newFilePath, program);
   return newFilePath;
@@ -76,7 +93,7 @@ var webneo = new WebNeopixel();
 app.get('/strips', function(req, res) {
   console.log('List strips.');
 });
-app.post('/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
+app.post('/neopixel-web/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
 
 app.listen(config.httpPort, function() {
   console.log('Lights camera action on ' + config.httpPort);
