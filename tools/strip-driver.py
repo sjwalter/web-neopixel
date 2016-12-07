@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from neopixel import Adafruit_NeoPixel
+from neopixel import ws
 from time import sleep
 
 import logging
@@ -47,7 +48,7 @@ def parseAndRunFile(fileContentsString):
     elif command =="SET_LEDS_INDEXED":
       runSetLedsIndexedCommand(arguments)
     elif command =="SET_LEDS_INDEXED_BACKGROUND":
-      runSetLedsIndexedBackgroundcommand(arguments)
+      runSetLedsIndexedBackgroundCommand(arguments)
     elif command =="DELAY":
       runDelayCommand(arguments[0])
     else:
@@ -73,7 +74,7 @@ def runSetLedsIndexedCommand(data):
     strip.setPixelColor(assertValidIndex(index), assertValidColor(color))
   strip.show()
 
-def runSetLedsIndexedBackgroundcommand(data):
+def runSetLedsIndexedBackgroundCommand(data):
   backgroundColor = assertValidColor(data.pop(0))
   nextIndex = assertValidIndex(data.pop(0))
   nextColor = assertValidColor(data.pop(0))
@@ -110,6 +111,8 @@ def parseArgs():
       default=600, help="Number of LEDs in the strip.")
   parser.add_argument("--brightness", type=int, choices=range(1, 255),
       default=200, help="Max brightness for the strip.")
+  parser.add_argument("--daemon", type=bool, default=False,
+      help="Run in daemon mode, reading <filename> as it changes")
   parser.add_argument("filename", help="The file to run.")
   args = parser.parse_args()
   return args
@@ -121,7 +124,13 @@ if __name__ == "__main__":
   LED_INVERT = False
 
   strip = Adafruit_NeoPixel(args.num_leds, args.gpio_pin,
-      LED_FREQ_HZ, LED_DMA, LED_INVERT, args.brightness)
+      LED_FREQ_HZ, LED_DMA, LED_INVERT, args.brightness,
+      strip_type=ws.WS2811_STRIP_GRB)
   strip.begin()
-  inputFileLines = open(args.filename).read()
-  parseAndRunFile(inputFileLines)
+  if not args.daemon:
+    inputFileLines = open(args.filename).read()
+    parseAndRunFile(inputFileLines)
+  else:
+    # TODO(daemon mode)
+    # Open pipe file
+    pass

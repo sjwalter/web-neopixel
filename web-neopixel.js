@@ -93,7 +93,7 @@ var webneo = new WebNeopixel();
 app.get('/strips', function(req, res) {
   console.log('List strips.');
 });
-app.post('/neopixel-web/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
+app.post('/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
 
 app.listen(config.httpPort, function() {
   console.log('Lights camera action on ' + config.httpPort);
