@@ -4,6 +4,8 @@ from neopixel import ws
 from time import sleep
 
 import logging
+import os
+import socket
 
 # We are sophisticated.
 strip = None
@@ -112,7 +114,7 @@ def parseArgs():
   parser.add_argument("--brightness", type=int, choices=range(1, 255),
       default=255, help="Max brightness for the strip.")
   parser.add_argument("--daemon", type=bool, default=False,
-      help="Run in daemon mode, reading <filename> as it changes")
+      help="Run in daemon mode, listening <filename> as a network socket")
   parser.add_argument("filename", help="The file to run.")
   args = parser.parse_args()
   return args
@@ -131,6 +133,18 @@ if __name__ == "__main__":
     inputFileLines = open(args.filename).read()
     parseAndRunFile(inputFileLines)
   else:
-    # TODO(daemon mode)
-    # Open pipe file
-    pass
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+      os.remove(args.filename)
+    except OSError:
+      pass
+    sock.bind(args.filename)
+    sock.listen(1)
+    while True:
+      conn, addr = sock.accept()
+      logging.debug('Accepted new connection on socket.')
+      while True:
+	data = conn.recv(1024)
+	if not data: break
+	parseAndRunFile(data)
+      conn.close()

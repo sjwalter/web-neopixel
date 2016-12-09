@@ -5,7 +5,7 @@
 function WebNeopixel(baseUrl, maxQps) {
   this.baseUrl_ = baseUrl || '/strips/1';
   this.setPixelsUrl_ = this.baseUrl_ + '/set-pixels';
-  this.maxQps_ = maxQps || 5;
+  this.maxQps_ = maxQps || 10;
   this.minDelayBetweenCallsMs_ = 1 / this.maxQps_ * 1000;
   this.lastCall_ = 0;
 }
