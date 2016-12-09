@@ -3,12 +3,40 @@
  * Web neopixel interface.
  */
 function WebNeopixel(baseUrl, maxQps) {
-  this.baseUrl_ = baseUrl || '/strips/1';
-  this.setPixelsUrl_ = this.baseUrl_ + '/set-pixels';
+  this.baseUrl_ = baseUrl || '/strips/';
   this.maxQps_ = maxQps || 10;
   this.minDelayBetweenCallsMs_ = 1 / this.maxQps_ * 1000;
-  this.lastCall_ = 0;
+
+  /**
+   * Timestamp of most-recent request, just before sending. Used to implement
+   * really hacky ratelimiting, because if you hit the endpoint too often it
+   * crashes the GPIO pin somehow.
+   * @private <number>
+  */
+  this.lastCallTimestampMs_ = 0;
+
+  /**
+   * Configuration of the strip under control.
+   * @private <Object>
+   */
+  this.stripData_ = null;
 }
+
+
+/**
+ * Initialize the library. Fetch strip data.
+ * @param <Function> cb Callback for completion.
+ * @param <Function> err Errback.
+ */
+WebNeopixel.prototype.initialize = function(cb, err) {
+  jQuery.get(this.baseUrl_, (resp) => {
+    // TODO(sjwalter): Fix this for when we support multiple strips.
+    this.stripData_ = resp[0];
+    this.setLedsUrl_ = resp[0].stripUrl + 'set-pixels';
+    this.numLeds_ = resp[0].numLeds;
+    cb();
+  }, 'json');
+};
 
 
 /**
@@ -18,8 +46,8 @@ function WebNeopixel(baseUrl, maxQps) {
  */
 WebNeopixel.prototype.makeRequest_ = function(url, data) {
   var now = Date.now();
-  if (now - this.lastCall_ > this.minDelayBetweenCallsMs_) {
-    this.lastCall_ = now;
+  if (now - this.lastCallTimestampMs_ > this.minDelayBetweenCallsMs_) {
+    this.lastCallTimestampMs_ = now;
     console.log('Making query');
     jQuery.ajax({
       contentType: 'application/json',
@@ -37,11 +65,9 @@ WebNeopixel.prototype.makeRequest_ = function(url, data) {
 /**
  * Set a single pixel color.
  */
-WebNeopixel.prototype.setPixelColor = function(index, color) {
-  if (typeof color == 'string') {
-    color = parseInt(color, 16);
-  }
-  this.makeRequest_(this.setPixelsUrl_, {
+WebNeopixel.prototype.setLedColor = function(index, color) {
+  color = WebNeopixel.normalizeColor(color);
+  this.makeRequest_(this.setLedsUrl_, {
     mode: 'single',
     pixelData: [index, color]
   });
@@ -54,7 +80,7 @@ WebNeopixel.prototype.setPixelColor = function(index, color) {
  * @param {Array.<number>} pixelData The pixeldata to set.
  * @param {number=} background If set, the background color for not-present indices.
  */
-WebNeopixel.prototype.setPixels = function(pixelData, background) {
+WebNeopixel.prototype.setLeds = function(pixelData, background) {
   var data = {
     mode: 'indexed',
     pixelData: pixelData
@@ -62,5 +88,49 @@ WebNeopixel.prototype.setPixels = function(pixelData, background) {
   if (background) {
     data['background'] = background;
   }
-  this.makeRequest_(this.setPixelsUrl_, data);
+  this.makeRequest_(this.setLedsUrl_, data);
+};
+
+
+/**
+ * Returns the number of LEDs in the strip.
+ * @return <number> The number of leds.
+ */
+WebNeopixel.getNumLeds = function() {
+  return this.numLeds_;
+};
+
+
+/**
+ * Fill the strip with a single color.
+ */
+WebNeopixel.prototype.fill = function(color) {
+  color = WebNeopixel.normalizeColor(color);
+  var data = {
+    mode: 'fill',
+    pixelData: [color]
+  };
+  this.makeRequest_(this.setLedsUrl_, data);
+};
+
+
+/**
+ * Clear the entire strip. Just fill(0).
+ */
+WebNeopixel.prototype.clear = function() {
+  return this.fill(0);
+};
+
+
+/**
+ * Utility for normalizing colors.
+ */
+WebNeopixel.normalizeColor = function(color) {
+  if (typeof color == 'string') {
+    if (color[0] == '#') {
+      color = color.substr(1);
+    }
+    return parseInt(color, 16);
+  }
+  return color;
 };

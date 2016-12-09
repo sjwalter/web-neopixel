@@ -44,6 +44,9 @@ WebNeopixel.prototype.handleSetPixels = function(req, res) {
     } else {
       program = 'SET_LEDS_INDEXED ' + req.body.pixelData.join(' ');
     }
+  } else if (mode == 'fill') {
+    program = 'SET_LEDS_INDEXED_BACKGROUND ' + req.body.pixelData[0] +
+	' 0 ' + req.body.pixelData[0];
   } else {
     res.status(405).send({error: 'Invalid mode'});
   }
@@ -61,8 +64,17 @@ WebNeopixel.prototype.runProgram = function(program) {
 };
 
 var webneo = new WebNeopixel();
+/**
+ * Get the list of strips to interact with. This doesn't really do anything
+ * useful right now because there's only ever one strip.
+ * TODO(sjwalter): Make useful.
+ */
 app.get('/strips', function(req, res) {
-  console.log('List strips.');
+  res.send([{
+    stripUrl: '/strips/' + config.gpioPin + '/',
+    gpioPin: config.gpioPin,
+    numLeds: config.numLeds
+  }]);
 });
 app.post('/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
 
