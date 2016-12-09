@@ -108,9 +108,9 @@ def parseArgs():
   parser.add_argument("--gpio_pin", type=int, choices=range(1, 20),
       default=18, help="GPIO pin connected to leds.")
   parser.add_argument("--num_leds", type=int,
-      default=600, help="Number of LEDs in the strip.")
+      default=1200, help="Number of LEDs in the strip.")
   parser.add_argument("--brightness", type=int, choices=range(1, 255),
-      default=200, help="Max brightness for the strip.")
+      default=255, help="Max brightness for the strip.")
   parser.add_argument("--daemon", type=bool, default=False,
       help="Run in daemon mode, reading <filename> as it changes")
   parser.add_argument("filename", help="The file to run.")
