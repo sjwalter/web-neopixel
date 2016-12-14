@@ -1,9 +1,7 @@
 var config = require('./config');
 
 var bodyParser = require('body-parser');
-var childProcess = require('child_process');
 var express = require('express');
-var fs = require('fs');
 var net = require('net');
 
 var app = express();
@@ -11,10 +9,9 @@ app.use(bodyParser.json());
 
 function WebNeopixel() {
   this.programIsRunning = false;
-  this.childProcess = null;
-  this.tempDirPath = null;
-  this.tempProgramIndex = 0;
   this.webneopixelStream = net.connect(config.socketPath);
+  this.recordProgram_ = false;
+  this.recordProgramFile_ = null;
 }
 
  /**
@@ -38,7 +35,7 @@ WebNeopixel.prototype.handleSetPixels = function(req, res) {
   } else if (mode == 'all') {
     program = 'SET_LEDS ' + req.body.pixelData.join(' ');
   } else if (mode == 'indexed') {
-    if (req.body.background) {
+    if (req.body.background || req.body.background === 0) {
       program = 'SET_LEDS_INDEXED_BACKGROUND ' + req.body.background + 
 	  ' ' + req.body.pixelData.join(' ');
     } else {

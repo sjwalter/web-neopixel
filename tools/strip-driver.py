@@ -144,7 +144,7 @@ if __name__ == "__main__":
       conn, addr = sock.accept()
       logging.debug('Accepted new connection on socket.')
       while True:
-	data = conn.recv(1024)
+	data = conn.recv(16348)
 	if not data: break
 	parseAndRunFile(data)
       conn.close()

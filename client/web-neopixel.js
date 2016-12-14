@@ -80,13 +80,31 @@ WebNeopixel.prototype.setLedColor = function(index, color) {
  * @param {Array.<number>} pixelData The pixeldata to set.
  * @param {number=} background If set, the background color for not-present indices.
  */
-WebNeopixel.prototype.setLeds = function(pixelData, background) {
+WebNeopixel.prototype.setLedsIndexed = function(pixelData, background) {
   var data = {
     mode: 'indexed',
     pixelData: pixelData
   };
+  if (background || background === 0) {
+    data['background'] = WebNeopixel.normalizeColor(background);
+  }
+  this.makeRequest_(this.setLedsUrl_, data);
+};
+
+
+/**
+ * Set all the pixels.
+ * pixel is left unchanged, unless background is provided.
+ * @param {Array.<number>} pixelData The pixeldata to set.
+ * @param {number=} background If set, the background color for not-present indices.
+ */
+WebNeopixel.prototype.setLeds = function(pixelData, background) {
+  var data = {
+    mode: 'all',
+    pixelData: pixelData
+  };
   if (background) {
-    data['background'] = background;
+    data['background'] = WebNeopixel.normalizeColor(background);
   }
   this.makeRequest_(this.setLedsUrl_, data);
 };
@@ -96,7 +114,7 @@ WebNeopixel.prototype.setLeds = function(pixelData, background) {
  * Returns the number of LEDs in the strip.
  * @return <number> The number of leds.
  */
-WebNeopixel.getNumLeds = function() {
+WebNeopixel.prototype.getNumLeds = function() {
   return this.numLeds_;
 };
 
