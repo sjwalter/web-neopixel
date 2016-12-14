@@ -32,9 +32,11 @@ WebNeopixel.prototype.initialize = function(cb, err) {
   jQuery.get(this.baseUrl_, (resp) => {
     // TODO(sjwalter): Fix this for when we support multiple strips.
     this.stripData_ = resp[0];
-    this.setLedsUrl_ = resp[0].stripUrl + 'set-pixels';
+    this.stripBaseUrl_ = resp[0].stripUrl;
+    this.setLedsUrl_ = this.stripBaseUrl_ + 'set-pixels';
+    this.saveLedLayoutUrl_ = this.stripBaseUrl_ + 'save-led-layout'
     this.numLeds_ = resp[0].numLeds;
-    cb();
+    cb && cb();
   }, 'json');
 };
 
@@ -108,6 +110,14 @@ WebNeopixel.prototype.setLeds = function(pixelData, background) {
   }
   this.makeRequest_(this.setLedsUrl_, data);
 };
+
+
+/**
+ * Save an LED layout for later retrieval.
+ * @param {object} ledLayout The led layout.
+ */
+WebNeopixel.prototype.saveLedLayout = function(ledLayout) {
+  this.makeRequest_(this.saveLedLayoutUrl_, {ledLayout: ledLayout});
 
 
 /**

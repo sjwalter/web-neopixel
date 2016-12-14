@@ -2,6 +2,7 @@ var config = require('./config');
 
 var bodyParser = require('body-parser');
 var express = require('express');
+var fs = require('fs');
 var net = require('net');
 
 var app = express();
@@ -60,6 +61,15 @@ WebNeopixel.prototype.runProgram = function(program) {
   this.webneopixelStream.write(program);
 };
 
+
+WebNeopixel.prototype.handleSaveLedLayout = function(req, res) {
+  var filename = 'led-layout-' + req.params.index + new Date().toISOString();
+  var fullFilePath = config.ledLayoutUploadPath + '/' + filename;
+  fs.writeFile(fullFilePath, JSON.stringify(req.body.ledLayout), () => {
+    res.send();
+  });
+};
+
 var webneo = new WebNeopixel();
 /**
  * Get the list of strips to interact with. This doesn't really do anything
@@ -78,3 +88,6 @@ app.post('/strips/:index/set-pixels', webneo.handleSetPixels.bind(webneo));
 app.listen(config.httpPort, function() {
   console.log('Lights camera action on ' + config.httpPort);
 });
+
+app.post('/strips/:index/save-led-layout',
+    webneo.handleSaveLedLayout.bind(webneo));
